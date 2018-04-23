@@ -45,5 +45,5 @@ export function merge (target, source) {
     })
   }
 
-  return Object.assign({}, target)
+  return target
 }

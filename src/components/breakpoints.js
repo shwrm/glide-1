@@ -1,6 +1,9 @@
 import { warn } from '../utils/log'
+import { throttle } from '../utils/wait'
 import { isObject } from '../utils/unit'
-import { sortKeys } from '../utils/object'
+import { merge, sortKeys } from '../utils/object'
+
+import EventsBinder from '../core/event/events-binder'
 
 /**
  * Sorts keys of breakpoint object so they will be ordered from lower to bigger.
@@ -19,6 +22,13 @@ function sortBreakpoints (points) {
 }
 
 export default function (Glide, Components, Events) {
+  /**
+   * Instance of the binder for DOM Events.
+   *
+   * @type {EventsBinder}
+   */
+  const Binder = new EventsBinder()
+
   /**
    * Holds reference to settings.
    *
@@ -55,7 +65,7 @@ export default function (Glide, Components, Events) {
      */
     match (points) {
       if (typeof window.matchMedia !== 'undefined') {
-        for (const point in points) {
+        for (let point in points) {
           if (points.hasOwnProperty(point)) {
             if (window.matchMedia(`(max-width: ${point}px)`).matches) {
               return points[point]
@@ -72,15 +82,15 @@ export default function (Glide, Components, Events) {
    * Overwrite instance settings with currently matching breakpoint settings.
    * This happens right after component initialization.
    */
-  settings = Object.assign(settings, Breakpoints.match(points))
+  settings = merge(settings, Breakpoints.match(points))
 
   /**
    * Update glide with settings of matched brekpoint:
    * - window resize to update slider
    */
-  Events.on('resize', () => {
-    settings = Object.assign(settings, Breakpoints.match(points))
-  })
+  Binder.on('resize', window, throttle(() => {
+    settings = merge(settings, Breakpoints.match(points))
+  }, Glide.settings.throttle))
 
   /**
    * Resort and update default settings:
@@ -90,6 +100,14 @@ export default function (Glide, Components, Events) {
     points = sortBreakpoints(points)
 
     defaults = Object.assign({}, settings)
+  })
+
+  /**
+   * Unbind resize listener:
+   * - on destroying, to bring markup to its initial state
+   */
+  Events.on('destroy', () => {
+    Binder.off('resize', window)
   })
 
   return Breakpoints
