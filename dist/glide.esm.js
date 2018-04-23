@@ -3466,13 +3466,6 @@ function sortBreakpoints(points) {
 
 var Breakpoints = function (Glide, Components, Events) {
   /**
-   * Instance of the binder for DOM Events.
-   *
-   * @type {EventsBinder}
-   */
-  var Binder = new EventsBinder();
-
-  /**
    * Holds reference to settings.
    *
    * @type {Object}
@@ -3531,9 +3524,9 @@ var Breakpoints = function (Glide, Components, Events) {
    * Update glide with settings of matched brekpoint:
    * - window resize to update slider
    */
-  Binder.on('resize', window, throttle(function () {
+  Events.on('resize', function () {
     settings = _extends(settings, Breakpoints.match(points));
-  }, Glide.settings.throttle));
+  });
 
   /**
    * Resort and update default settings:
@@ -3543,14 +3536,6 @@ var Breakpoints = function (Glide, Components, Events) {
     points = sortBreakpoints(points);
 
     defaults = _extends({}, settings);
-  });
-
-  /**
-   * Unbind resize listener:
-   * - on destroying, to bring markup to its initial state
-   */
-  Events.on('destroy', function () {
-    Binder.off('resize', window);
   });
 
   return Breakpoints;
