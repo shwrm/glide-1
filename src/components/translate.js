@@ -38,20 +38,20 @@ export default function (Glide, Components, Events) {
       Components.Transition.after(() => {
         Events.emit('translate.jump')
 
-        Translate.set(width * (length - 1))
+        Translate.set(width * (length - (length - Glide.index)));
       })
 
-      return Translate.set(-width - (gap * length))
+      return Translate.set(-width * (length - Glide.index) - gap * (length - Glide.index))
     }
 
     if (Glide.isType('carousel') && Components.Run.isOffset('>')) {
       Components.Transition.after(() => {
         Events.emit('translate.jump')
 
-        Translate.set(0)
+        Translate.set(Glide.index * width)
       })
 
-      return Translate.set((width * length) + (gap * length))
+      return Translate.set(width * (length + Glide.index) + gap * (length + Glide.index))
     }
 
     return Translate.set(context.movement)

@@ -893,6 +893,92 @@ var Run = function (Glide, Components, Events) {
         });
       }
     },
+    getRealLength: function getRealLength() {
+      var length = Components.Html.slides.length - Glide.settings.perView;
+
+      if (length < 0) {
+        length = Components.Html.slides.length - 1;
+      }
+
+      return length;
+    },
+    getLeftCalculation: function getLeftCalculation(num) {
+      var prevIndex = Glide.index - num;
+      var offset = false;
+
+      if (Glide.isType('slider')) {
+        if (Components.Html.slides.length < Glide.settings.perView) {
+          return {
+            index: Glide.index,
+            event: false,
+            offset: false
+          };
+        } else if (prevIndex < 0) {
+          return {
+            index: Components.Html.slides.length - Glide.settings.perView,
+            event: 'run.end',
+            offset: true
+          };
+        }
+      }
+
+      if (prevIndex < 0) {
+        prevIndex = Components.Html.slides.length + prevIndex;
+
+        if (prevIndex < 0) {
+          return {
+            index: Glide.index,
+            event: false,
+            offset: false
+          };
+        } else {
+          return {
+            index: prevIndex,
+            event: 'run.start',
+            offset: true
+          };
+        }
+      }
+
+      return {
+        index: prevIndex,
+        event: false,
+        offset: false
+      };
+    },
+    getRightCalculation: function getRightCalculation(num) {
+      var nextIndex = Glide.index + num;
+
+      if (Glide.isType('slider')) {
+        if (Components.Html.slides.length < Glide.settings.perView) {
+          return {
+            index: Glide.index,
+            offset: false,
+            event: false
+          };
+        } else if (nextIndex > this.getRealLength()) {
+          return {
+            index: 0,
+            offset: true,
+            event: 'run.end'
+          };
+        }
+      }
+
+      if (nextIndex > Components.Html.slides.length - 1) {
+        return {
+          index: nextIndex - Components.Html.slides.length,
+          offset: true,
+          event: 'run.end'
+        };
+      }
+
+      return {
+        index: nextIndex,
+        event: false,
+        offset: false
+      };
+    },
 
 
     /**
@@ -908,43 +994,53 @@ var Run = function (Glide, Components, Events) {
 
 
       var countableSteps = isNumber(toInt(steps)) && toInt(steps) !== 0;
+      var stepCount = countableSteps ? Math.abs(toInt(steps)) : 1;
+      var moveCalculation = null;
 
       switch (direction) {
         case '>':
           if (steps === '>') {
-            Glide.index = length;
-          } else if (this.isEnd()) {
-            this._o = true;
-
-            Glide.index = 0;
-
-            Events.emit('run.end', move);
-          } else if (countableSteps) {
-            Glide.index += Math.min(length - Glide.index, -toInt(steps));
+            moveCalculation = {
+              index: getRealLength(),
+              event: false,
+              offset: false
+            };
           } else {
-            Glide.index++;
+            moveCalculation = this.getRightCalculation(stepCount);
           }
           break;
 
         case '<':
           if (steps === '<') {
-            Glide.index = 0;
-          } else if (this.isStart()) {
-            this._o = true;
-
-            Glide.index = length;
-
-            Events.emit('run.start', move);
-          } else if (countableSteps) {
-            Glide.index -= Math.min(Glide.index, toInt(steps));
+            moveCalculation = {
+              index: 0,
+              event: false,
+              offset: false
+            };
           } else {
-            Glide.index--;
+            moveCalculation = this.getLeftCalculation(stepCount);
           }
           break;
 
         case '=':
-          Glide.index = steps;
+          moveCalculation = {
+            index: steps,
+            event: false,
+            offset: false
+          };
           break;
+      }
+
+      if (moveCalculation) {
+        if (moveCalculation.offset) {
+          Components.Run._o = true;
+        }
+
+        Glide.index = moveCalculation.index;
+
+        if (moveCalculation.event) {
+          Events.emit(moveCalculation.event, move);
+        }
       }
     },
 
@@ -2312,20 +2408,20 @@ var Translate = function (Glide, Components, Events) {
       Components.Transition.after(function () {
         Events.emit('translate.jump');
 
-        Translate.set(width * (length - 1));
+        Translate.set(width * (length - (length - Glide.index)));
       });
 
-      return Translate.set(-width - gap * length);
+      return Translate.set(-width * (length - Glide.index) - gap * (length - Glide.index));
     }
 
     if (Glide.isType('carousel') && Components.Run.isOffset('>')) {
       Components.Transition.after(function () {
         Events.emit('translate.jump');
 
-        Translate.set(0);
+        Translate.set(Glide.index * width);
       });
 
-      return Translate.set(width * length + gap * length);
+      return Translate.set(width * (length + Glide.index) + gap * (length + Glide.index));
     }
 
     return Translate.set(context.movement);

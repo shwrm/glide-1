@@ -43,6 +43,95 @@ export default function (Glide, Components, Events) {
       }
     },
 
+    getRealLength () {
+      let length = Components.Html.slides.length - Glide.settings.perView
+
+      if(length < 0) {
+        length = Components.Html.slides.length - 1;
+      }
+
+      return length;
+    },
+
+    getLeftCalculation (num) {
+      let prevIndex = Glide.index - num
+      let offset = false
+
+      if(Glide.isType('slider')) {
+        if(Components.Html.slides.length < Glide.settings.perView) {
+          return {
+            index: Glide.index,
+            event: false,
+            offset: false
+          };
+        } else if(prevIndex < 0) {
+          return {
+            index: Components.Html.slides.length - Glide.settings.perView,
+            event: 'run.end',
+            offset: true
+          }
+        }
+      }
+
+      if(prevIndex < 0) {
+        prevIndex = Components.Html.slides.length + prevIndex
+
+        if(prevIndex < 0) {
+          return {
+            index: Glide.index,
+            event: false,
+            offset: false
+          };
+        } else {
+          return {
+            index: prevIndex,
+            event: 'run.start',
+            offset: true
+          }
+        }
+      }
+
+      return {
+        index: prevIndex,
+        event: false,
+        offset: false
+      }
+    },
+
+    getRightCalculation (num) {
+      let nextIndex = Glide.index + num
+
+      if(Glide.isType('slider')) {
+        if(Components.Html.slides.length < Glide.settings.perView) {
+          return {
+            index: Glide.index,
+            offset: false,
+            event: false
+          }
+        } else if(nextIndex > this.getRealLength()) {
+          return {
+            index: 0,
+            offset: true,
+            event: 'run.end'
+          }
+        }
+      }
+
+      if(nextIndex > Components.Html.slides.length  - 1) {
+        return {
+          index: nextIndex - Components.Html.slides.length,
+          offset: true,
+          event: 'run.end'
+        }
+      }
+
+      return {
+        index: nextIndex,
+        event: false,
+        offset: false
+      }
+    },
+
     /**
      * Calculates current index based on defined move.
      *
@@ -53,43 +142,53 @@ export default function (Glide, Components, Events) {
       let { steps, direction } = move
 
       let countableSteps = (isNumber(toInt(steps))) && (toInt(steps) !== 0)
+      let stepCount = countableSteps ? Math.abs(toInt(steps)) : 1
+      let moveCalculation = null;
 
       switch (direction) {
         case '>':
           if (steps === '>') {
-            Glide.index = length
-          } else if (this.isEnd()) {
-            this._o = true
-
-            Glide.index = 0
-
-            Events.emit('run.end', move)
-          } else if (countableSteps) {
-            Glide.index += Math.min(length - Glide.index, -toInt(steps))
+            moveCalculation = {
+              index: this.getRealLength(),
+              event: false,
+              offset: false
+            }
           } else {
-            Glide.index++
+            moveCalculation = this.getRightCalculation(stepCount)
           }
           break
 
         case '<':
           if (steps === '<') {
-            Glide.index = 0
-          } else if (this.isStart()) {
-            this._o = true
-
-            Glide.index = length
-
-            Events.emit('run.start', move)
-          } else if (countableSteps) {
-            Glide.index -= Math.min(Glide.index, toInt(steps))
+            moveCalculation = {
+              index: 0,
+              event: false,
+              offset: false
+            }
           } else {
-            Glide.index--
+            moveCalculation = this.getLeftCalculation(stepCount)
           }
           break
 
         case '=':
-          Glide.index = steps
+          moveCalculation = {
+            index: steps,
+            event: false,
+            offset: false
+          }
           break
+      }
+
+      if(moveCalculation) {
+        if(moveCalculation.offset) {
+          Components.Run._o = true
+        }
+
+        Glide.index = moveCalculation.index;
+
+        if(moveCalculation.event) {
+          Events.emit(moveCalculation.event, move);
+        }
       }
     },
 
